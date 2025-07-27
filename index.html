@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Report: The World's Most Collectible Cameras</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Lora:wght@400;600&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals -->
+    <!-- Application Structure Plan: The application is designed as an interactive digital museum. The structure guides the user from a high-level gallery of all cameras to a detailed "exhibit" view for each one. The core is a filterable grid, allowing users to curate the collection by era, type, or chapter, making the large dataset manageable. This is supplemented by a "Data Insights" section with interactive charts for quantitative comparison. This structure was chosen to empower user-led discovery, allowing them to either browse freely or analyze specific trends, offering a more engaging experience than a linear report. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Full list of 20 cameras. -> Goal: Organize/Browse. -> Viz: Interactive Card Grid. -> Interaction: Click to see details, filter by category. -> Justification: Provides an intuitive, visual entry point to the entire collection. -> Library/Method: HTML/CSS/JS.
+        - Report Info: Detailed camera synopsis and analysis. -> Goal: Inform. -> Viz: Modal "Detail View". -> Interaction: Opens on card click. -> Justification: Keeps the main gallery uncluttered while providing deep, contextual information on demand. -> Library/Method: HTML/CSS/JS.
+        - Report Info: Value data (Original vs. Current). -> Goal: Compare/Relationships. -> Viz: Scatter Plot. -> Interaction: Hover for tooltips showing camera details. -> Justification: Instantly visualizes the appreciation and value spectrum of the cameras. -> Library/Method: Chart.js/Canvas.
+        - Report Info: Camera types and eras. -> Goal: Compare/Organize. -> Viz: Donut Chart. -> Interaction: Hover for tooltips. -> Justification: Gives a quick overview of the collection's composition. -> Library/Method: Chart.js/Canvas.
+        - Report Info: Key Collectibility Pillars. -> Goal: Compare/Inform. -> Viz: Styled HTML list with Unicode icons within the detail view. -> Justification: Clearly and visually presents the qualitative strengths of each camera. -> Library/Method: HTML/Tailwind/Unicode.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F8F5F2; /* Warm Neutral */
+            color: #433A3F; /* Dark Brown/Gray */
+        }
+        h1, h2, h3 {
+            font-family: 'Lora', serif;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 45vh;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        .filter-btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .filter-btn.active {
+            background-color: #A58D7F; /* Muted Accent */
+            color: #FFFFFF;
+            font-weight: 600;
+        }
+        .camera-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .camera-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        #modal-backdrop {
+            transition: opacity 0.3s ease-in-out;
+        }
+        #modal-content {
+            transition: transform 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <main class="container mx-auto px-4 py-8 md:py-12">
+
+        <header class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl font-bold text-[#433A3F] mb-3">Icons of Light</h1>
+            <p class="text-lg text-[#6B5E62]">An Interactive Exploration of the World's Most Collectible Cameras</p>
+        </header>
+
+        <section id="gallery" class="mb-16">
+            <h2 class="text-3xl font-bold text-center mb-4">The Collection</h2>
+            <p class="max-w-3xl mx-auto text-center text-[#6B5E62] mb-8">
+                This gallery presents the 20 most collectible cameras as identified by the "Icons of Light" report. Use the filters below to explore the collection by historical era or camera type. Click on any camera card to view a detailed analysis of its history, design, and significance.
+            </p>
+            
+            <div id="filters" class="flex flex-wrap justify-center gap-2 md:gap-4 mb-8">
+                <button data-filter="all" class="filter-btn active px-4 py-2 rounded-full text-sm bg-white border border-gray-300">All</button>
+                <button data-filter="Pioneering" class="filter-btn px-4 py-2 rounded-full text-sm bg-white border border-gray-300">Pioneering</button>
+                <button data-filter="Mid-Century Classic" class="filter-btn px-4 py-2 rounded-full text-sm bg-white border border-gray-300">Mid-Century</button>
+                <button data-filter="Modern Film" class="filter-btn px-4 py-2 rounded-full text-sm bg-white border border-gray-300">Modern Film</button>
+                <button data-filter="Digital Revolution" class="filter-btn px-4 py-2 rounded-full text-sm bg-white border border-gray-300">Digital Revolution</button>
+                <button data-filter="Modern Classic" class="filter-btn px-4 py-2 rounded-full text-sm bg-white border border-gray-300">Modern Classic</button>
+            </div>
+
+            <div id="camera-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <!-- Camera cards will be injected here by JavaScript -->
+            </div>
+        </section>
+
+        <section id="data-insights" class="mb-16 bg-white rounded-xl p-6 md:p-8 shadow-sm">
+            <h2 class="text-3xl font-bold text-center mb-4">Data Insights</h2>
+            <p class="max-w-3xl mx-auto text-center text-[#6B5E62] mb-8">
+                This section provides interactive visualizations of the data from the report. Compare the cameras based on their value appreciation and see a breakdown of the collection by camera type. Hover over data points for more information.
+            </p>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                <div>
+                    <h3 class="font-bold text-lg text-center mb-4">Value Appreciation: Original vs. Current Value (USD)</h3>
+                    <div class="chart-container">
+                        <canvas id="valueScatterChart"></canvas>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="font-bold text-lg text-center mb-4">Collection Breakdown by Type</h3>
+                    <div class="chart-container">
+                        <canvas id="typeDonutChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer class="text-center mt-12 border-t border-gray-200 pt-6">
+            <p class="text-sm text-gray-500">Based on the "Icons of Light" report. All data and analysis sourced from the provided document.</p>
+        </footer>
+
+    </main>
+
+    <!-- Modal for Camera Details -->
+    <div id="modal-backdrop" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 hidden opacity-0">
+        <div id="modal-content" class="bg-[#F8F5F2] rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto transform scale-95">
+            <div id="modal-body" class="p-6 md:p-8">
+                <!-- Modal content will be injected here by JavaScript -->
+            </div>
+            <div class="bg-gray-100 px-6 py-3 text-right">
+                 <button id="modal-close-btn" class="px-4 py-2 bg-[#A58D7F] text-white rounded-lg hover:bg-[#8e7669] transition">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const cameraData = [
+            { rank: 1, model: "Leica 0-Series (No. 105)", type: "35mm Film Prototype", era: "Pioneering (1923)", originalPrice: 0, currentValue: 12700000, synopsis: "The Leica 0-Series represents the very genesis of 35mm photography. This specific camera, serial number 105, was the personal camera of its visionary designer, Oskar Barnack, making it one of the most significant photographic artifacts in existence.", analysis: "The collectibility of this camera rests on the absolute pillars of innovation and provenance. Barnack's design choice for the 36x24mm negative size established the 'full-frame' format. The astronomical difference in value between this unit and other 0-Series models is due to its direct, documented connection to the inventor." },
+            { rank: 2, model: "Kodak DCS 100", type: "Digital SLR (Nikon F3 Body)", era: "Digital Revolution (1991)", originalPrice: 20000, currentValue: 10000, synopsis: "The Kodak DCS 100 marks the birth of the commercial DSLR. Built upon the chassis of a Nikon F3 film camera, it was a cumbersome, two-piece beast aimed at photojournalists.", analysis: "Collectible for its absolute historical primacy. It physically bridged the analog and digital worlds, mating a professional film body to a 1.3-megapixel digital sensor and a separate storage unit. With only 987 units sold, it is exceptionally rare." },
+            { rank: 3, model: "Leica M3", type: "35mm Film Rangefinder", era: "Mid-Century Classic (1954)", originalPrice: 500, currentValue: 1650, synopsis: "The Leica M3 is the camera that perfected the 35mm rangefinder and defined the brand's modern identity. It was the benchmark for photojournalism and street photography for decades.", analysis: "Rooted in its groundbreaking innovation and sublime design. It introduced the M-bayonet mount, a combined rangefinder/viewfinder, and automatically switching, parallax-corrected frame lines. Its all-mechanical, buttery-smooth operation offers a purely tactile experience." },
+            { rank: 4, model: "Hasselblad 500C/M", type: "Medium Format Film SLR", era: "Mid-Century Classic (1957)", originalPrice: 600, currentValue: 2500, synopsis: "The undisputed icon of professional medium format photography. Its revolutionary modular system and partnership with Carl Zeiss optics made it the workhorse for top photographers and NASA.", analysis: "Appeal is multifaceted. Its core innovation was its modularity—swapping lenses, film magazines, and viewfinders. The leaf shutter in the lens enabled flash sync at any speed, a critical advantage for studio work. Its cultural resonance is immense." },
+            { rank: 5, model: "Nikon F", type: "35mm Film SLR", era: "Mid-Century Classic (1959)", originalPrice: 233, currentValue: 425, synopsis: "The camera that shattered the German monopoly on professional photography and established Japan as the new industry leader. It became the definitive workhorse for photojournalists.", analysis: "Stems from its revolutionary impact and bulletproof reputation. It was the first 35mm SLR to offer a complete professional system from day one, including a vast range of lenses and interchangeable viewfinders. Its reputation for being nearly indestructible made it the trusted tool in demanding environments." },
+            { rank: 6, model: "Rolleiflex 2.8F", type: "Medium Format Film TLR", era: "Mid-Century Classic (1960)", originalPrice: 400, currentValue: 2550, synopsis: "Represents the zenith of the twin-lens reflex (TLR) camera design. Beloved for its unique top-down shooting posture, whisper-quiet shutter, and extraordinary image quality.", analysis: "Appeal is tied to its unique design and superlative performance. The act of looking down into the waist-level finder creates a more contemplative connection with the subject. The 2.8F model is the most refined, featuring legendary Carl Zeiss Planar or Schneider-Kreuznach Xenotar lenses." },
+            { rank: 7, model: "Canon F-1", type: "35mm Film SLR", era: "Mid-Century Classic (1971)", originalPrice: 220, currentValue: 325, synopsis: "Canon's monumental answer to the dominant Nikon F. A top-of-the-line professional system SLR designed to be brutally tough, mechanically precise, and endlessly versatile.", analysis: "Collectible as both a historical landmark and a robust tool. It was Canon's first truly successful professional SLR system, built around the new FD mount. Engineered to extreme standards of durability, guaranteeing 100,000 shutter cycles." },
+            { rank: 8, model: "Leica M6", type: "35mm Film Rangefinder", era: "Modern Film (1984)", originalPrice: 2500, currentValue: 3500, synopsis: "The perfect fusion of classic mechanical purity and modern convenience. It took the revered form factor of the M3 and integrated a highly accurate TTL light meter.", analysis: "Its collectibility lies in its perfect balance. It retains the all-mechanical operation that purists cherish, while the built-in meter streamlines the shooting process. For many, the M6 is the quintessential modern film Leica." },
+            { rank: 9, model: "Mamiya 7II", type: "Medium Format Film Rangefinder", era: "Modern Film (1999)", originalPrice: 2000, currentValue: 4750, synopsis: "Hailed as the ultimate medium format travel camera, it delivers breathtaking 6x7cm image quality from a shockingly lightweight, compact, and quiet body.", analysis: "Prized for offering the best of two worlds: immense detail with the portability of a 35mm rangefinder. Its lenses are legendary for their optical perfection. The lack of a true digital successor ensures it holds its value exceptionally well." },
+            { rank: 10, model: "Contax T2", type: "35mm Film Point & Shoot", era: "Modern Film (1990)", originalPrice: 800, currentValue: 1350, synopsis: "The king of the 1990s premium point-and-shoot craze. Housed in a titanium body with a razor-sharp Carl Zeiss Sonnar lens, its popularity exploded after being adopted by celebrities.", analysis: "A case study in how cultural resonance can redefine value. Its modern collectibility was driven by its appearance in the hands of figures like Kendall Jenner and Frank Ocean. Beyond the hype, it is a superbly engineered camera." },
+            { rank: 11, model: "Pentax K1000", type: "35mm Film SLR", era: "Modern Film (1976)", originalPrice: 300, currentValue: 225, synopsis: "The quintessential student camera. For over two decades, its simple, all-manual, and incredibly durable design made it the default choice for photography courses worldwide.", analysis: "Rooted in its cultural significance and functional purity. Its fully mechanical shutter can operate without a battery. This reliability and its reputation as the perfect tool for learning continue to drive strong demand." },
+            { rank: 12, model: "Olympus OM-1", type: "35mm Film SLR", era: "Mid-Century Classic (1972)", originalPrice: 250, currentValue: 160, synopsis: "The camera that ignited the compact SLR revolution. Conceived by designer Yoshihisa Maitani, the OM-1 was shockingly small and light compared to its contemporaries, yet sacrificed nothing in professional features.", analysis: "Collectible for its landmark design. Its most lauded feature is its enormous, bright viewfinder, which puts even many modern DSLRs to shame. Its design DNA influenced the entire industry for decades." },
+            { rank: 13, model: "Yashica T4 Super D", type: "35mm Film Point & Shoot", era: "Modern Film (1992)", originalPrice: 300, currentValue: 675, synopsis: "The 'other' legendary premium point-and-shoot. It boasts a world-class Carl Zeiss Tessar 35mm f/3.5 T* lens capable of producing incredibly sharp images from an unassuming plastic body.", analysis: "Value is almost entirely derived from the performance of its lens. Its value has been significantly inflated by social media hype. The 'Super D' model adds a top-mounted 'Super Scope' viewfinder for candid street photography." },
+            { rank: 14, model: "Apple QuickTake 100", type: "Early Consumer Digital", era: "Digital Revolution (1994)", originalPrice: 749, currentValue: 200, synopsis: "One of the first consumer-level color digital cameras. Co-developed with Kodak, its importance as an early, innovative Apple product with a unique design makes it highly collectible.", analysis: "Appeal lies in its innovation and provenance. It was the first mass-produced color digital camera under $1,000. Its distinctive, binocular-like form is pure 1990s industrial design." },
+            { rank: 15, model: "Epson R-D1", type: "Digital Rangefinder (APS-C)", era: "Digital Revolution (2004)", originalPrice: 2999, currentValue: 2000, synopsis: "The world's first digital rangefinder camera, beating Leica to the punch. An M-mount compatible camera with a quirky, analog-inspired design and a cult-classic CCD sensor.", analysis: "A cult classic celebrated for its innovation and unique user experience. It features a manual film advance lever to cock the shutter and beautiful analog dials made by Seiko. Its 6MP CCD sensor is lauded for rendering beautiful, film-like colors." },
+            { rank: 16, model: "Nikon D1", type: "Digital SLR (APS-C)", era: "Digital Revolution (1999)", originalPrice: 5500, currentValue: 100, synopsis: "The camera that truly ignited the professional digital revolution. The first DSLR developed entirely by a single major manufacturer, it offered a combination of speed, quality, and price that shattered the market.", analysis: "Collectible purely for its historical impact. It made a professional-grade DSLR accessible to thousands of working photographers for the first time, triggering the digital arms race between Nikon and Canon." },
+            { rank: 17, model: "Canon EOS 5D Mark II", type: "Digital SLR (Full-Frame)", era: "Digital Revolution (2008)", originalPrice: 2699, currentValue: 350, synopsis: "A landmark camera that democratized full-frame photography and changed filmmaking forever. It was the first DSLR to offer full 1080p HD recording on a large full-frame sensor.", analysis: "Collectibility is cemented by its immense cultural and technological impact. Its video capabilities launched the 'HDSLR revolution'. Entire episodes of network TV shows were filmed on it, proving its professional viability." },
+            { rank: 18, model: "Fujifilm X100V", type: "Digital Compact (APS-C)", era: "Modern Classic (2020)", originalPrice: 1399, currentValue: 1600, synopsis: "The camera that became a viral social media sensation. Its beautiful retro aesthetics, combined with Fujifilm's renowned film simulation color science, made it a TikTok phenomenon.", analysis: "A prime example of a modern 'hype camera.' Underneath the hype, it is an exceptional tool, featuring a classic rangefinder-style body, a unique hybrid viewfinder, and a sharp, fixed 23mm f/2 lens." },
+            { rank: 19, model: "Ricoh GR III/IIIx", type: "Digital Compact (APS-C)", era: "Modern Classic (2019)", originalPrice: 950, currentValue: 1025, synopsis: "The embodiment of the ultimate pocket street photography camera. It maintains a fervent cult following for its minimalist design, one-handed ergonomics, and astonishing image quality.", analysis: "Born from its steadfast design philosophy to create the 'most powerful snapshot camera'. It packs a 24MP APS-C sensor and a phenomenal prime lens into a body that genuinely disappears into a pocket." },
+            { rank: 20, model: "Leica Q2", type: "Digital Compact (Full-Frame)", era: "Modern Classic (2019)", originalPrice: 4995, currentValue: 3850, synopsis: "The modern Leica experience, perfected. It fuses a high-resolution 47.3MP full-frame sensor with a fixed, optically stabilized Summilux 28mm f/1.7 lens of breathtaking quality.", analysis: "Driven by its impeccable balance of performance, design, and brand prestige. It delivers the quintessential Leica image quality in a streamlined, modern package with autofocus. Leica digital models hold their values better than any other digital cameras." }
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const grid = document.getElementById('camera-grid');
+            const filters = document.getElementById('filters');
+            const modalBackdrop = document.getElementById('modal-backdrop');
+            const modalContent = document.getElementById('modal-content');
+            const modalBody = document.getElementById('modal-body');
+            const modalCloseBtn = document.getElementById('modal-close-btn');
+
+            function formatCurrency(value) {
+                if (value === 0) return "N/A (Prototype)";
+                if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
+                return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
+            }
+
+            function createCameraCard(camera) {
+                const card = document.createElement('div');
+                card.className = 'camera-card bg-white rounded-lg shadow-md p-4 cursor-pointer flex flex-col';
+                card.dataset.era = camera.era.split(' (')[0];
+                card.dataset.id = camera.rank;
+
+                card.innerHTML = `
+                    <div class="flex-grow">
+                        <p class="text-xs text-gray-500">${camera.rank}. ${camera.type}</p>
+                        <h3 class="text-lg font-bold text-[#433A3F] mb-2">${camera.model}</h3>
+                        <p class="text-sm text-gray-600">${camera.synopsis.substring(0, 100)}...</p>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                        <p class="text-sm font-semibold text-[#6B5E62]">${camera.era}</p>
+                        <p class="text-lg font-bold text-[#A58D7F]">${formatCurrency(camera.currentValue)}</p>
+                    </div>
+                `;
+                return card;
+            }
+
+            function renderGrid(filter = 'all') {
+                grid.innerHTML = '';
+                const filteredData = (filter === 'all') ? cameraData : cameraData.filter(c => c.era.includes(filter));
+                filteredData.forEach(camera => {
+                    grid.appendChild(createCameraCard(camera));
+                });
+            }
+
+            function openModal(camera) {
+                modalBody.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-sm text-gray-500">${camera.rank}. ${camera.type}</p>
+                            <h2 class="text-3xl font-bold text-[#433A3F] mb-1">${camera.model}</h2>
+                            <p class="text-lg font-semibold text-[#6B5E62]">${camera.era}</p>
+                        </div>
+                        <div class="text-right flex-shrink-0 ml-4">
+                            <p class="text-sm text-gray-500">Current Value</p>
+                            <p class="text-2xl font-bold text-[#A58D7F]">${formatCurrency(camera.currentValue)}</p>
+                            <p class="text-xs text-gray-500 mt-1">Original: ${formatCurrency(camera.originalPrice)}</p>
+                        </div>
+                    </div>
+                    <div class="mt-6 border-t pt-6">
+                        <h3 class="text-xl font-bold mb-2">Synopsis</h3>
+                        <p class="text-base text-gray-700 mb-6">${camera.synopsis}</p>
+                        <h3 class="text-xl font-bold mb-2">Collectibility Analysis</h3>
+                        <p class="text-base text-gray-700">${camera.analysis}</p>
+                    </div>
+                `;
+                modalBackdrop.classList.remove('hidden');
+                setTimeout(() => {
+                    modalBackdrop.classList.remove('opacity-0');
+                    modalContent.classList.remove('scale-95');
+                }, 10);
+            }
+
+            function closeModal() {
+                modalBackdrop.classList.add('opacity-0');
+                modalContent.classList.add('scale-95');
+                setTimeout(() => {
+                    modalBackdrop.classList.add('hidden');
+                }, 300);
+            }
+
+            filters.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON') {
+                    document.querySelectorAll('#filters .filter-btn').forEach(btn => btn.classList.remove('active'));
+                    e.target.classList.add('active');
+                    renderGrid(e.target.dataset.filter);
+                }
+            });
+
+            grid.addEventListener('click', (e) => {
+                const card = e.target.closest('.camera-card');
+                if (card) {
+                    const camera = cameraData.find(c => c.rank == card.dataset.id);
+                    openModal(camera);
+                }
+            });
+
+            modalCloseBtn.addEventListener('click', closeModal);
+            modalBackdrop.addEventListener('click', (e) => {
+                if (e.target === modalBackdrop) {
+                    closeModal();
+                }
+            });
+
+            // Charting
+            const chartColors = {
+                primary: '#A58D7F',
+                secondary: '#6B5E62',
+                accent: '#C3B6AE',
+                text: '#433A3F',
+                background: '#F8F5F2',
+                pie: ['#A58D7F', '#6B5E62', '#C3B6AE', '#DCD3CC', '#8c7b71']
+            };
+
+            const defaultChartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: chartColors.text, font: { family: 'Inter' } }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                        titleFont: { family: 'Inter' },
+                        bodyFont: { family: 'Inter' },
+                    }
+                },
+            };
+
+            function createScatterChart() {
+                const ctx = document.getElementById('valueScatterChart').getContext('2d');
+                const data = cameraData.filter(c => c.rank > 1).map(c => ({
+                    x: c.originalPrice,
+                    y: c.currentValue,
+                    label: c.model
+                }));
+
+                new Chart(ctx, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: 'Cameras (Original vs. Current Value)',
+                            data: data,
+                            backgroundColor: chartColors.primary,
+                        }]
+                    },
+                    options: {
+                        ...defaultChartOptions,
+                        scales: {
+                            x: {
+                                type: 'logarithmic',
+                                title: { display: true, text: 'Original Price (Log Scale)', color: chartColors.text },
+                                ticks: { color: chartColors.text },
+                                grid: { color: '#E5E7EB' }
+                            },
+                            y: {
+                                type: 'logarithmic',
+                                title: { display: true, text: 'Current Value (Log Scale)', color: chartColors.text },
+                                ticks: { color: chartColors.text },
+                                grid: { color: '#E5E7EB' }
+                            }
+                        },
+                        plugins: {
+                            ...defaultChartOptions.plugins,
+                            tooltip: {
+                                ...defaultChartOptions.plugins.tooltip,
+                                callbacks: {
+                                    label: function(context) {
+                                        const item = context.dataset.data[context.dataIndex];
+                                        return `${item.label}: ${formatCurrency(item.y)}`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            function createDonutChart() {
+                const ctx = document.getElementById('typeDonutChart').getContext('2d');
+                const typeCounts = cameraData.reduce((acc, camera) => {
+                    const simpleType = camera.type.split(' (')[0];
+                    acc[simpleType] = (acc[simpleType] || 0) + 1;
+                    return acc;
+                }, {});
+
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(typeCounts),
+                        datasets: [{
+                            data: Object.values(typeCounts),
+                            backgroundColor: chartColors.pie,
+                            borderColor: chartColors.background,
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        ...defaultChartOptions,
+                        plugins: { ...defaultChartOptions.plugins, legend: { position: 'right' } }
+                    }
+                });
+            }
+
+            renderGrid();
+            createScatterChart();
+            createDonutChart();
+        });
+    </script>
+</body>
+</html>
